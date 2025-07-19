@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gelişmiş Otoklav Simülatörü</title>
+  <style>
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+      margin: 0; 
+      padding: 20px;
+    }
+    .container { 
+      max-width: 1400px; 
+      margin: 0 auto; 
+      background: #fff; 
+      padding: 30px; 
+      border-radius: 15px; 
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3); 
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #2c3e50;
+    }
+    .flex-row { display: flex; gap: 40px; align-items: flex-start; }
+    .flex-col { display: flex; flex-direction: column; gap: 16px; }
+    .label { margin-bottom: 8px; font-weight: bold; color: #34495e; }
+    .sim-area { 
+      background: linear-gradient(145deg, #e3f2fd, #bbdefb); 
+      border-radius: 15px; 
+      position: relative; 
+      padding: 20px; 
+      box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .control-panel {
+      background: #f8f9fa;
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .outputs > div { flex: 1; }
+    .status { 
+      margin-top: 16px; 
+      font-size: 1.2em; 
+      padding: 15px;
+      border-radius: 8px;
+      background: #e8f5e8;
+      border-left: 5px solid #4caf50;
+    }
+    .warning { 
+      color: #d32f2f; 
+      font-weight: bold; 
+      margin-top: 8px; 
+      padding: 10px;
+      background: #ffebee;
+      border-radius: 5px;
+      border-left: 4px solid #f44336;
+    }
+    .success {
+      color: #2e7d32;
+      background: #e8f5e8;
+      border-left-color: #4caf50;
+    }
+    button { 
+      padding: 12px 30px; 
+      font-size: 1.1em; 
+      border-radius: 8px; 
+      border: none; 
+      background: linear-gradient(45deg, #1976d2, #42a5f5); 
+      color: #fff; 
+      cursor: pointer; 
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(25, 118, 210, 0.3);
+    }
+    button:hover { 
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(25, 118, 210, 0.4);
+    }
+    button:disabled { 
+      background: #bdbdbd; 
+      cursor: not-allowed; 
+      transform: none;
+      box-shadow: none;
+    }
+    .emergency-stop {
+      background: linear-gradient(45deg, #d32f2f, #f44336);
+      box-shadow: 0 4px 15px rgba(211, 47, 47, 0.3);
+    }
+    .desc-box { 
+      background: #fff; 
+      border: 2px solid #1976d2; 
+      border-radius: 10px; 
+      padding: 15px; 
+      position: absolute; 
+      top: 15px; 
+      left: 15px; 
+      z-index: 10; 
+      min-width: 280px; 
+      box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+      max-width: 350px;
+    }
+    .hotspot { cursor: pointer; opacity: 0; transition: opacity 0.3s; }
+    .hotspot:hover { opacity: 0.1; fill: #1976d2; }
+    .svg-label { 
+      font-size: 14px; 
+      fill: #1976d2; 
+      font-weight: bold; 
+      pointer-events: none; 
+      opacity: 0.8; 
+    }
+    .steam { 
+      opacity: 0.6; 
+      animation: steamRise 2s infinite ease-in-out;
+    }
+    @keyframes steamRise {
+      0% { transform: translateY(0px); opacity: 0.6; }
+      50% { transform: translateY(-10px); opacity: 0.3; }
+      100% { transform: translateY(-20px); opacity: 0; }
+    }
+    .parameter-group {
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin: 10px 0;
+    }
+    .slider {
+      flex: 1;
+      height: 8px;
+      border-radius: 5px;
+      background: #ddd;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #1976d2;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    .value-display {
+      min-width: 60px;
+      text-align: center;
+      font-weight: bold;
+      color: #1976d2;
+      background: #e3f2fd;
+      padding: 5px 10px;
+      border-radius: 5px;
+    }
+    .log-container {
+      max-height: 200px;
+      overflow-y: auto;
+      background: #f5f5f5;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+    .log-entry {
+      padding: 8px;
+      margin: 5px 0;
+      background: #fff;
+      border-radius: 5px;
+      border-left: 4px solid #2196f3;
+      font-size: 0.9em;
+    }
+    .phase-indicator {
+      display: flex;
+      justify-content: space-between;
+      margin: 20px 0;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 10px;
+    }
+    .phase-step {
+      flex: 1;
+      text-align: center;
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: bold;
+      transition: all 0.3s ease;
+    }
+    .phase-step.active {
+      background: #1976d2;
+      color: white;
+      transform: scale(1.05);
+    }
+    .phase-step.completed {
+      background: #4caf50;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔬 Gelişmiş Otoklav Simülatörü</h1>
+      <p>Profesyonel sterilizasyon süreçlerini öğrenin ve simüle edin</p>
+    </div>
+
+    <div class="flex-row">
+      <!-- SVG Animation and Hotspots -->
+      <div class="sim-area" style="width:550px; height:600px; position:relative;">
+        <svg id="autoclaveSVG" width="550" height="600" viewBox="0 0 550 600">
+          <!-- Outer jacket -->
+          <rect x="125" y="150" width="300" height="350" rx="60" fill="#b0bec5" stroke="#1976d2" stroke-width="6"/>
+          <!-- Inner chamber (color will change with temp) -->
+          <rect id="chamberSVG" x="175" y="200" width="200" height="250" rx="40" fill="#e3f2fd" stroke="#1976d2" stroke-width="5"/>
+          <!-- Lid -->
+          <ellipse id="lidSVG" cx="275" cy="200" rx="100" ry="35" fill="#cfd8dc" stroke="#1976d2" stroke-width="5"/>
+          <!-- Lid handle -->
+          <rect x="260" y="170" width="30" height="15" rx="7" fill="#757575" stroke="#424242" stroke-width="2"/>
+          <!-- Heater -->
+          <rect id="heaterSVG" x="235" y="440" width="80" height="35" rx="15" fill="#ff9800" stroke="#f57c00" stroke-width="4"/>
+          <!-- Heater coils -->
+          <path d="M245 450 Q255 445 265 450 T285 450" stroke="#d84315" stroke-width="3" fill="none"/>
+          <path d="M245 460 Q255 455 265 460 T285 460" stroke="#d84315" stroke-width="3" fill="none"/>
+          <!-- Pressure gauge -->
+          <circle id="gaugeSVG" cx="375" cy="180" r="28" fill="#fff" stroke="#1976d2" stroke-width="4"/>
+          <circle cx="375" cy="180" r="20" fill="none" stroke="#666" stroke-width="2"/>
+          <line id="gaugeNeedle" x1="375" y1="180" x2="375" y2="165" stroke="#d32f2f" stroke-width="5" stroke-linecap="round"/>
+          <!-- Gauge markings -->
+          <text x="375" y="210" text-anchor="middle" font-size="10" fill="#666">BAR</text>
+          <!-- Whistle -->
+          <ellipse id="whistleSVG" cx="175" cy="180" rx="18" ry="12" fill="#bdbdbd" stroke="#616161" stroke-width="3"/>
+          <rect x="170" y="175" width="10" height="8" fill="#757575"/>
+          <!-- Safety valve -->
+          <circle cx="325" cy="170" r="8" fill="#f44336" stroke="#d32f2f" stroke-width="2"/>
+          <!-- Vacuum generator -->
+          <rect id="vacuumSVG" x="440" y="300" width="35" height="50" rx="10" fill="#90caf9" stroke="#1976d2" stroke-width="3"/>
+          <circle cx="457" cy="315" r="5" fill="#1976d2"/>
+          <!-- Wastewater cooler -->
+          <rect id="wastewaterSVG" x="135" y="480" width="50" height="35" rx="10" fill="#80cbc4" stroke="#00897b" stroke-width="3"/>
+          <!-- Water level indicator -->
+          <rect id="waterLevelIndicator" x="185" y="400" width="180" height="40" rx="5" fill="#e1f5fe" stroke="#0277bd" stroke-width="2"/>
+          <rect id="waterLevel" x="187" y="402" width="176" height="36" rx="3" fill="#03a9f4"/>
+          <text x="275" y="425" text-anchor="middle" font-size="12" fill="#fff" font-weight="bold">Su Seviyesi</text>
+          <!-- Temperature display -->
+          <rect x="200" y="250" width="150" height="40" rx="20" fill="#1976d2" stroke="#0d47a1" stroke-width="3"/>
+          <text id="tempDisplay" x="275" y="275" text-anchor="middle" font-size="18" fill="#fff" font-weight="bold">25°C</text>
+          <!-- Steam animation (hidden by default) -->
+          <g id="steamGroup"></g>
+          <!-- Hotspots (transparent, clickable) -->
+          <rect class="hotspot" x="175" y="200" width="200" height="250" rx="40" data-key="chamber"/>
+          <ellipse class="hotspot" cx="275" cy="200" rx="100" ry="35" data-key="lid"/>
+          <circle class="hotspot" cx="375" cy="180" r="28" data-key="gauge"/>
+          <ellipse class="hotspot" cx="175" cy="180" rx="18" ry="12" data-key="whistle"/>
+          <rect class="hotspot" x="235" y="440" width="80" height="35" rx="15" data-key="heater"/>
+          <rect class="hotspot" x="440" y="300" width="35" height="50" rx="10" data-key="vacuum"/>
+          <rect class="hotspot" x="135" y="480" width="50" height="35" rx="10" data-key="wastewater"/>
+          <circle class="hotspot" cx="325" cy="170" r="8" data-key="safety"/>
+          <!-- Labels -->
+          <text class="svg-label" x="275" y="330" text-anchor="middle">Sterilizasyon Odası</text>
+          <text class="svg-label" x="275" y="190" text-anchor="middle">Kapak</text>
+          <text class="svg-label" x="375" y="220" text-anchor="middle">Basınç</text>
+          <text class="svg-label" x="175" y="205" text-anchor="middle">Düdük</text>
+          <text class="svg-label" x="275" y="485" text-anchor="middle">Isıtıcı</text>
+          <text class="svg-label" x="457" y="360" text-anchor="middle">Vakum</text>
+          <text class="svg-label" x="160" y="505" text-anchor="middle">Soğutucu</text>
+          <text class="svg-label" x="325" y="160" text-anchor="middle">Emniyet</text>
+        </svg>
+        <div id="descBox" class="desc-box" style="display:none;"></div>
+      </div>
+
+      <!-- Controls and Outputs -->
+      <div class="flex-col control-panel" style="flex:1;">
+        <!-- Phase Indicator -->
+        <div class="phase-indicator">
+          <div class="phase-step" id="phase-vacuum">Vakum</div>
+          <div class="phase-step" id="phase-heating">Isıtma</div>
+          <div class="phase-step" id="phase-sterilization">Sterilizasyon</div>
+          <div class="phase-step" id="phase-drying">Kurutma</div>
+        </div>
+
+        <div class="parameter-group">
+          <div class="label">🌡️ Sterilizasyon Parametreleri</div>
+          <div class="slider-container">
+            <label style="min-width: 120px;">Sıcaklık (°C):</label>
+            <input type="range" id="temp" class="slider" min="100" max="140" value="121" />
+            <span id="tempVal" class="value-display">121</span>
+          </div>
+          <div class="slider-container">
+            <label style="min-width: 120px;">Süre (dakika):</label>
+            <input type="range" id="time" class="slider" min="5" max="60" value="20" />
+            <span id="timeVal" class="value-display">20</span>
+          </div>
+          <div class="slider-container">
+            <label style="min-width: 120px;">Su Seviyesi (%):</label>
+            <input type="range" id="waterLevel" class="slider" min="0" max="100" value="100" />
+            <span id="waterLevelVal" class="value-display">100</span>
+          </div>
+        </div>
+
+        <div class="parameter-group">
+          <div class="label">📦 Yük Tipi</div>
+          <select id="loadType" style="width: 100%; padding: 10px; border-radius: 5px; border: 2px solid #ddd;">
+            <option value="solid">Katı Malzemeler (Cerrahi Aletler)</option>
+            <option value="liquid">Sıvı Malzemeler (Besiyeri)</option>
+            <option value="porous">Gözenekli Malzemeler (Tekstil)</option>
+          </select>
+        </div>
+
+        <div style="display: flex; gap: 15px;">
+          <button id="startBtn" style="flex: 1;">🚀 Döngüyü Başlat</button>
+          <button id="stopBtn" class="emergency-stop" style="flex: 1;" disabled>⏹️ Acil Durdur</button>
+        </div>
+
+        <div class="status" id="status">Durum: Hazır</div>
+        <div class="warning" id="warning" style="display: none;"></div>
+
+        <div style="background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+          <div class="label">📊 Gerçek Zamanlı Grafik</div>
+          <canvas id="graphArea" width="450" height="250"></canvas>
+        </div>
+
+        <div class="log-container">
+          <div class="label">📝 İşlem Günlüğü</div>
+          <div id="logArea"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // --- SVG Hotspots and Descriptions ---
+    const descs = {
+      chamber: `<b>🏺 Sterilizasyon Odası</b><br>
+        Paslanmaz çelik veya metal alaşımından yapılmış ana bölüm. Malzemelerin sterilize edildiği yer. 
+        Dış ceket ile çevrili olup buhar ile hızlı ısıtma sağlar. Kapasite: 100-3000L.<br>
+        <em>Sıcaklık: 121-134°C, Basınç: 1-3 bar</em>`,
+      lid: `<b>🔒 Kapak / Kapı</b><br>
+        Vida kelepçeleri ve asbest conta ile hava geçirmez kapatma sağlar. 
+        Sterilizasyon için odayı mühürler. Basınç göstergesi, düdük ve emniyet valfi içerir.<br>
+        <em>Güvenlik: Otomatik kilitleme sistemi</em>`,
+      gauge: `<b>📊 Basınç Göstergesi</b><br>
+        Sterilizasyon sırasında iç basıncı gösterir. Güvenlik ve doğru çalışma için kritik.<br>
+        <em>Ölçüm aralığı: 0-4 bar</em>`,
+      whistle: `<b>🎵 Basınç Tahliye Ünitesi / Düdük</b><br>
+        Fazla buharı serbest bırakarak güvenli basıncı korur. Düdüklü tencere prensibi ile çalışır.<br>
+        <em>Aktivasyon: 2.5 bar üzerinde</em>`,
+      heater: `<b>🔥 Buhar Jeneratörü / Elektrikli Isıtıcı</b><br>
+        Suyu ısıtarak buhar üretir. Yeterli su seviyesi gereklidir, aksi halde ısıtıcı zarar görür.<br>
+        <em>Güç: 2-5 kW, Voltaj: 220-380V</em>`,
+      vacuum: `<b>🌪️ Vakum Jeneratörü</b><br>
+        Odadan havayı çıkararak vakum oluşturur. Daha iyi sterilizasyon için hava ceplerini önler.<br>
+        <em>Vakum seviyesi: -0.8 bar</em>`,
+      wastewater: `<b>❄️ Atık Su Soğutucusu</b><br>
+        Boşaltmadan önce atık suyu soğutarak boruları ısı hasarından korur.<br>
+        <em>Soğutma: 80°C → 40°C</em>`,
+      safety: `<b>🛡️ Emniyet Valfi</b><br>
+        Aşırı basınç durumunda otomatik olarak açılır. Kritik güvenlik komponenti.<br>
+        <em>Açılma basıncı: 3.5 bar</em>`
+    };
+
+    // Hotspot interaction
+    const svg = document.getElementById('autoclaveSVG');
+    const descBox = document.getElementById('descBox');
+    svg.querySelectorAll('.hotspot').forEach(h => {
+      h.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const key = h.getAttribute('data-key');
+        descBox.innerHTML = descs[key];
+        descBox.style.display = 'block';
+        // Position descBox near click
+        const rect = svg.getBoundingClientRect();
+        descBox.style.left = Math.min(e.clientX - rect.left + 20, 200) + 'px';
+        descBox.style.top = Math.max(e.clientY - rect.top - 10, 15) + 'px';
+      });
+    });
+    svg.addEventListener('click', () => descBox.style.display = 'none');
+
+    // --- Simulation Controls ---
+    const temp = document.getElementById('temp');
+    const time = document.getElementById('time');
+    const loadType = document.getElementById('loadType');
+    const waterLevel = document.getElementById('waterLevel');
+    const tempVal = document.getElementById('tempVal');
+    const timeVal = document.getElementById('timeVal');
+    const waterLevelVal = document.getElementById('waterLevelVal');
+    const status = document.getElementById('status');
+    const warning = document.getElementById('warning');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const logArea = document.getElementById('logArea');
+    const tempDisplay = document.getElementById('tempDisplay');
+
+    temp.oninput = () => {
+      tempVal.textContent = temp.value;
+      updateRecommendedTime();
+    };
+    time.oninput = () => timeVal.textContent = time.value;
+    waterLevel.oninput = () => {
+      waterLevelVal.textContent = waterLevel.value;
+      updateWaterLevelVisual(parseInt(waterLevel.value));
+    };
+    loadType.onchange = updateRecommendedTime;
+
+    function updateRecommendedTime() {
+      const tempValue = parseInt(temp.value);
+      const loadValue = loadType.value;
+      const recommended = getRequiredTime(loadValue, tempValue);
+      time.value = recommended;
+      timeVal.textContent = recommended;
+    }
+
+    function getRequiredTime(loadType, temp) {
+      const timeMatrix = {
+        'solid': { 121: 15, 134: 3, 115: 30 },
+        'liquid': { 121: 20, 134: 5, 115: 45 },
+        'porous': { 121: 30, 134: 10, 115: 60 }
+      };
+
+      if (temp >= 134) return timeMatrix[loadType][134];
+      if (temp >= 121) return timeMatrix[loadType][121];
+      return timeMatrix[loadType][115];
+    }
+
+    function updateWaterLevelVisual(level) {
+      const waterLevelRect = document.getElementById('waterLevel');
+      const width = 176 * (level / 100);
+      waterLevelRect.setAttribute('width', width);
+
+      // Color based on level
+      if (level < 20) {
+        waterLevelRect.setAttribute('fill', '#f44336');
+      } else if (level < 50) {
+        waterLevelRect.setAttribute('fill', '#ff9800');
+      } else {
+        waterLevelRect.setAttribute('fill', '#03a9f4');
+      }
+    }
+
+    // Chart.js setup
+    const ctx = document.getElementById('graphArea').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Sıcaklık (°C)',
+            data: [],
+            borderColor: 'rgba(244, 67, 54, 1)',
+            backgroundColor: 'rgba(244, 67, 54, 0.1)',
+            fill: true,
+            tension: 0.4,
+            yAxisID: 'y',
+          },
+          {
+            label: 'Basınç (bar)',
+            data: [],
+            borderColor: 'rgba(33, 150, 243, 1)',
+            backgroundColor: 'rgba(33, 150, 243, 0.1)',
+            fill: true,
+            tension: 0.4,
+            yAxisID: 'y1',
+          }
+        ]
+      },
+      options: {
+        responsive: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top' },
+          title: { display: true, text: 'Sterilizasyon Parametreleri' }
+        },
+        scales: {
+          y: { 
+            type: 'linear', 
+            position: 'left', 
+            min: 20, 
+            max: 150, 
+            title: { display: true, text: 'Sıcaklık (°C)' },
+            grid: { color: 'rgba(0,0,0,0.1)' }
+          },
+          y1: { 
+            type: 'linear', 
+            position: 'right', 
+            min: 0, 
+            max: 4, 
+            grid: { drawOnChartArea: false }, 
+            title: { display: true, text: 'Basınç (bar)' }
+          },
+          x: { 
+            title: { display: true, text: 'Zaman (saniye)' },
+            grid: { color: 'rgba(0,0,0,0.1)' }
+          }
+        }
+      }
+    });
+
+    // Improved pressure calculation for autoclave
+    function getAutoclavePressure(tempC) {
+      if (tempC >= 134) return 3.0;
+      if (tempC >= 121) return 2.0;
+      if (tempC >= 115) return 1.5;
+      if (tempC >= 100) return 1.0;
+      return 0.1;
+    }
+
+    // SVG elements for animation
+    const chamberSVG = document.getElementById('chamberSVG');
+    const gaugeNeedle = document.getElementById('gaugeNeedle');
+    const steamGroup = document.getElementById('steamGroup');
+    const heaterSVG = document.getElementById('heaterSVG');
+
+    // Simulation phases
+    const phases = {
+      PRE_VACUUM: 'Ön-vakum (Hava boşaltma)',
+      HEATING: 'Isıtma',
+      STERILIZATION: 'Sterilizasyon',
+      DRYING: 'Kurutma',
+      COMPLETE: 'Tamamlandı'
+    };
+
+    let currentPhase = phases.PRE_VACUUM;
+    let simulationInterval, elapsedTime = 0, sterilizationTime = 0, targetTemp = 121, waterLvl = 100;
+    let isRunning = false;
+
+    function addLog(message, type = 'info') {
+      const logEntry = document.createElement('div');
+      logEntry.className = 'log-entry';
+      const timestamp = new Date().toLocaleTimeString('tr-TR');
+      logEntry.innerHTML = `<strong>${timestamp}</strong> - ${message}`;
+
+      if (type === 'warning') logEntry.style.borderLeftColor = '#ff9800';
+      if (type === 'error') logEntry.style.borderLeftColor = '#f44336';
+      if (type === 'success') logEntry.style.borderLeftColor = '#4caf50';
+
+      logArea.insertBefore(logEntry, logArea.firstChild);
+
+      // Keep only last 10 entries
+      while (logArea.children.length > 10) {
+        logArea.removeChild(logArea.lastChild);
+      }
+    }
+
+    function updatePhaseIndicator(phase) {
+      document.querySelectorAll('.phase-step').forEach(step => {
+        step.classList.remove('active', 'completed');
+      });
+
+      const phaseMap = {
+        [phases.PRE_VACUUM]: 'phase-vacuum',
+        [phases.HEATING]: 'phase-heating',
+        [phases.STERILIZATION]: 'phase-sterilization',
+        [phases.DRYING]: 'phase-drying'
+      };
+
+      const currentElement = document.getElementById(phaseMap[phase]);
+      if (currentElement) {
+        currentElement.classList.add('active');
+
+        // Mark previous phases as completed
+        const allPhases = ['phase-vacuum', 'phase-heating', 'phase-sterilization', 'phase-drying'];
+        const currentIndex = allPhases.indexOf(phaseMap[phase]);
+        for (let i = 0; i < currentIndex; i++) {
+          document.getElementById(allPhases[i]).classList.add('completed');
+        }
+      }
+    }
+
+    function checkWaterLevel(level) {
+      if(level < 20) {
+        showWarning("⚠️ Uyarı: Su seviyesi çok düşük! Sterilizasyon başarısız olabilir.");
+        return false;
+      } else if(level < 50) {
+        showWarning("⚠️ Dikkat: Su seviyesi düşük, izlemeye devam edin.");
+        return true;
+      } else {
+        hideWarning();
+        return true;
+      }
+    }
+
+    function showWarning(message) {
+      warning.textContent = message;
+      warning.style.display = 'block';
+      warning.className = 'warning';
+    }
+
+    function showSuccess(message) {
+      warning.textContent = message;
+      warning.style.display = 'block';
+      warning.className = 'warning success';
+    }
+
+    function hideWarning() {
+      warning.style.display = 'none';
+    }
+
+    // Animate chamber color, gauge, and other elements
+    function updateSVG(tempVal, pressureVal, phase) {
+      // Chamber color: blue (cold) to red (hot)
+      const minTemp = 25, maxTemp = 140;
+      const ratio = Math.max(0, Math.min(1, (tempVal - minTemp) / (maxTemp - minTemp)));
+      const red = Math.floor(255 * ratio);
+      const green = Math.floor(100 + (155 * (1 - ratio)));
+      const blue = Math.floor(255 * (1 - ratio));
+      chamberSVG.setAttribute('fill', `rgb(${red},${green},${blue})`);
+
+      // Update temperature display
+      tempDisplay.textContent = Math.round(tempVal) + '°C';
+
+      // Heater glow effect
+      if (phase === phases.HEATING) {
+        heaterSVG.setAttribute('fill', '#ff5722');
+        heaterSVG.style.filter = 'drop-shadow(0 0 10px #ff5722)';
+      } else {
+        heaterSVG.setAttribute('fill', '#ff9800');
+        heaterSVG.style.filter = 'none';
+      }
+
+      // Gauge needle: 0 bar = up (-90°), 3 bar = right (0°)
+      const minAngle = -Math.PI/2, maxAngle = 0;
+      const pNorm = Math.max(0, Math.min(1, pressureVal/3));
+      const angle = minAngle + (maxAngle-minAngle)*pNorm;
+      const r = 20;
+      const cx = 375, cy = 180;
+      const x2 = cx + r * Math.cos(angle);
+      const y2 = cy + r * Math.sin(angle);
+      gaugeNeedle.setAttribute('x2', x2);
+      gaugeNeedle.setAttribute('y2', y2);
+
+      // Steam animation
+      steamGroup.innerHTML = '';
+      if(phase === phases.STERILIZATION || phase === phases.HEATING) {
+        for(let i=0; i<8; i++) {
+          const sx = 200 + 25*i;
+          const sy = 220;
+          const animationDelay = i * 0.3;
+          steamGroup.innerHTML += `
+            <ellipse class="steam" cx="${sx}" cy="${sy}" rx="8" ry="15" fill="rgba(255,255,255,0.7)"
+                     style="animation-delay: ${animationDelay}s"/>`;
+        }
+      }
+
+      // Water level decrease during sterilization
+      if(phase === phases.STERILIZATION && waterLvl > 10) {
+        waterLvl -= 0.05; // Slower decrease
+        waterLevelVal.textContent = Math.max(0, Math.floor(waterLvl));
+        updateWaterLevelVisual(Math.floor(waterLvl));
+      }
+    }
+
+    function simulateStep(elapsedTime) {
+      let tempValSim, pressureValSim;
+
+      switch(currentPhase) {
+        case phases.PRE_VACUUM:
+          if(elapsedTime > 45) { 
+            currentPhase = phases.HEATING; 
+            status.textContent = "Durum: Isıtma fazı - Hedef sıcaklığa çıkılıyor";
+            addLog("Isıtma fazına geçildi", "info");
+            updatePhaseIndicator(currentPhase);
+          }
+          tempValSim = 25; 
+          pressureValSim = 0.1; 
+          break;
+
+        case phases.HEATING:
+          if(elapsedTime > 120) { 
+            currentPhase = phases.STERILIZATION; 
+            status.textContent = "Durum: Sterilizasyon fazı - Mikroorganizmalar yok ediliyor";
+            addLog(`Sterilizasyon başladı: ${targetTemp}°C, ${sterilizationTime/60} dakika`, "success");
+            updatePhaseIndicator(currentPhase);
+          }
+          let heatProgress = (elapsedTime - 45) / 75;
+          tempValSim = 25 + (targetTemp - 25) * Math.min(1, heatProgress);
+          pressureValSim = getAutoclavePressure(tempValSim); 
+          break;
+
+        case phases.STERILIZATION:
+          if(elapsedTime > 120 + sterilizationTime) { 
+            currentPhase = phases.DRYING; 
+            status.textContent = "Durum: Kurutma fazı - Nem uzaklaştırılıyor";
+            addLog("Kurutma fazına geçildi", "info");
+            updatePhaseIndicator(currentPhase);
+          }
+          tempValSim = targetTemp;
+          pressureValSim = getAutoclavePressure(tempValSim); 
+          break;
+
+        case phases.DRYING:
+          if(elapsedTime > 120 + sterilizationTime + 90) {
+            currentPhase = phases.COMPLETE;
+            status.textContent = "Durum: ✅ Sterilizasyon döngüsü başarıyla tamamlandı!";
+            addLog("Sterilizasyon döngüsü başarıyla tamamlandı!", "success");
+            showSuccess("✅ Sterilizasyon başarılı! Malzemeler kullanıma hazır.");
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            isRunning = false;
+            clearInterval(simulationInterval);
+            updatePhaseIndicator(phases.DRYING); // Mark drying as completed
+          }
+          let coolTime = elapsedTime - (120 + sterilizationTime);
+          tempValSim = targetTemp - (targetTemp - 40) * Math.min(1, coolTime / 90);
+          pressureValSim = getAutoclavePressure(tempValSim); 
+          break;
+
+        case phases.COMPLETE:
+          tempValSim = 40; 
+          pressureValSim = 0.1; 
+          break;
+      }
+
+      addData(elapsedTime, tempValSim, pressureValSim);
+      updateSVG(tempValSim, pressureValSim, currentPhase);
+    }
+
+    function addData(timeSec, tempVal, pressureVal) {
+      chart.data.labels.push(timeSec.toString());
+      chart.data.datasets[0].data.push(Math.round(tempVal * 10) / 10);
+      chart.data.datasets[1].data.push(Math.round(pressureVal * 10) / 10);
+
+      // Keep only last 100 data points for performance
+      if (chart.data.labels.length > 100) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+        chart.data.datasets[1].data.shift();
+      }
+
+      chart.update('none');
+    }
+
+    startBtn.onclick = () => {
+      if(!checkWaterLevel(parseInt(waterLevel.value))) {
+        alert("Lütfen döngüyü başlatmadan önce su seviyesini artırın.");
+        return;
+      }
+
+      // Reset everything
+      chart.data.labels = [];
+      chart.data.datasets[0].data = [];
+      chart.data.datasets[1].data = [];
+      chart.update();
+
+      elapsedTime = 0;
+      targetTemp = parseInt(temp.value);
+      sterilizationTime = parseInt(time.value) * 60;
+      waterLvl = parseInt(waterLevel.value);
+      currentPhase = phases.PRE_VACUUM;
+      isRunning = true;
+
+      status.textContent = "Durum: Ön-vakum fazı - Hava boşaltılıyor";
+      addLog(`Sterilizasyon döngüsü başlatıldı - ${loadType.options[loadType.selectedIndex].text}`, "info");
+      updatePhaseIndicator(currentPhase);
+
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+
+      simulateStep(elapsedTime);
+      simulationInterval = setInterval(() => {
+        elapsedTime++;
+
+        if(!checkWaterLevel(waterLvl) && waterLvl < 10) {
+          addLog("HATA: Su seviyesi kritik seviyenin altında! Döngü durduruldu.", "error");
+          showWarning("🚨 HATA: Su seviyesi çok düşük! Döngü durduruldu.");
+          stopSimulation();
+          return;
+        }
+
+        simulateStep(elapsedTime);
+      }, 1000);
+    };
+
+    function stopSimulation() {
+      clearInterval(simulationInterval);
+      status.textContent = "Durum: ⏹️ Döngü durduruldu";
+      addLog("Döngü manuel olarak durduruldu", "warning");
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      isRunning = false;
+      currentPhase = phases.PRE_VACUUM;
+      updatePhaseIndicator(currentPhase);
+    }
+
+    stopBtn.onclick = stopSimulation;
+
+    // Initialize
+    updateRecommendedTime();
+    updateWaterLevelVisual(100);
+    addLog("Sistem hazır - Parametreleri ayarlayın ve döngüyü başlatın", "info");
+  </script>
+</body>
+</html>
